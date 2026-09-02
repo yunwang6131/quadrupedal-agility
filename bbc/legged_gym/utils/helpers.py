@@ -210,7 +210,16 @@ def get_args():
         {"name": "--disc_obs_len", "type": float},
         {"name": "--obs_disc_weight_step", "type": float},
         {"name": "--task_obs_weight_decay_steps", "type": int},
-        {"name": "--experiment_idx", "type": int, "default": -1}
+        {"name": "--experiment_idx", "type": int, "default": -1},
+        {"name": "--mode", "type": int, "default": 5,
+         "help": "behavior mode 1-5: 1.walk 2.pace 3.trot 4.canter 5.jump"},
+        {"name": "--vel_x", "type": float, "default": 2.0, "help": "forward velocity command [m/s]"},
+        {"name": "--jump_height", "type": float, "default": 0.55, "help": "jump height command [m]"},
+        {"name": "--record", "action": "store_true", "default": False,
+         "help": "record an mp4 while playing (works together with --headless True)"},
+        {"name": "--record_steps", "type": int, "default": 1000, "help": "number of steps to record"},
+        {"name": "--record_width", "type": int, "default": 1280, "help": "video width"},
+        {"name": "--record_height", "type": int, "default": 720, "help": "video height"}
     ]
     # parse arguments
     args = gymutil.parse_arguments(

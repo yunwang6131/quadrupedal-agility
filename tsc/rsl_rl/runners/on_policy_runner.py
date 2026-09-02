@@ -108,6 +108,7 @@ class OnPolicyRunner:
                                   device=self.device, **self.alg_cfg)
         self.num_steps_per_env = self.cfg["num_steps_per_env"]
         self.save_interval = self.cfg["save_interval"]
+        self.milestone_interval = self.cfg.get("milestone_interval", 0)
         self.dagger_update_freq = self.alg_cfg["dagger_update_freq"]
 
         self.alg.init_storage(
@@ -272,8 +273,22 @@ class OnPolicyRunner:
             if self.log_dir is not None:
                 self.log(locals())
             if it % self.save_interval == 0:
-                self.save(os.path.join(self.log_dir, 'model.pt'))
+                self.save(os.path.join(self.log_dir, 'model.pt'), iteration=it + 1)
+            if (self.milestone_interval and it > self.start_learning_iteration
+                    and it % self.milestone_interval == 0):
+                ckpt_dir = os.path.join(self.log_dir, 'checkpoints')
+                os.makedirs(ckpt_dir, exist_ok=True)
+                self.save(os.path.join(ckpt_dir, 'model_{}.pt'.format(it)), iteration=it + 1)
             ep_infos.clear()
+
+        # 循环以 tot_iter-1 结束, 补一次收尾存盘, 避免最后不足 save_interval 的部分丢失
+        if self.log_dir is not None:
+            self.current_learning_iteration = tot_iter
+            self.save(os.path.join(self.log_dir, 'model.pt'), iteration=tot_iter)
+            if self.milestone_interval:
+                ckpt_dir = os.path.join(self.log_dir, 'checkpoints')
+                os.makedirs(ckpt_dir, exist_ok=True)
+                self.save(os.path.join(ckpt_dir, 'model_{}.pt'.format(tot_iter)), iteration=tot_iter)
 
     def learn_vision(self, num_learning_iterations, init_at_random_ep_len=False):
         if self.log_dir is not None and self.writer is None:
@@ -283,6 +298,10 @@ class OnPolicyRunner:
         self.env.cfg.obstacle.curriculum = False
 
         self.env.cfg.env.next_goal_threshold = 0.45
+
+        # Number of iterations over which the ground-truth delta_yaw injection is phased out.
+        gt_anneal_iters = 5000
+
         tot_iter = self.current_learning_iteration + num_learning_iterations
         self.start_learning_iteration = copy(self.current_learning_iteration)
 
@@ -316,6 +335,7 @@ class OnPolicyRunner:
             obst_type_buffer_student = []
             obst_type_buffer_teacher = []
             delta_yaw_ok_buffer = []
+            gt_inject_buffer = []
             for i in range(self.depth_encoder_cfg["num_steps_per_env"]):
                 if infos["depth"] != None:
                     with torch.no_grad():
@@ -348,13 +368,22 @@ class OnPolicyRunner:
                     actions_teacher = self.alg.actor_critic.act_inference(obs, hist_encoding=True, scandots_latent=None)
                     actions_teacher_buffer.append(actions_teacher)
 
+                # Steps outside the band kept the ground-truth delta_yaw in obs_student, so the
+                # student's own estimate never shaped the trajectory there and it was never trained
+                # on the states its own errors lead to. Widen the band past pi so that by the end of
+                # the schedule every step uses the estimate, as it must at deployment.
+                gt_progress = min((it - self.start_learning_iteration) / gt_anneal_iters, 1.0)
+                gt_thr = 0.6 + (4.0 - 0.6) * gt_progress
+                use_pred = (torch.abs(self.env.delta_yaw) < gt_thr).to(self.device)
+
                 obs_student = obs.clone()
-                obs_student[infos["delta_yaw_ok"],
+                obs_student[use_pred,
                 self.n_proprio - self.n_auxiliary:self.n_proprio - self.n_auxiliary + self.n_delta_yaw] \
-                    = delta_yaw.detach()[infos["delta_yaw_ok"]]
+                    = delta_yaw.detach()[use_pred]
                 obs_student[:, self.n_proprio - self.n_auxiliary + self.n_delta_yaw:self.n_proprio] = \
                     F.one_hot(torch.argmax(obst_type.detach(), dim=-1), num_classes=obst_type.shape[-1])
                 delta_yaw_ok_buffer.append(torch.nonzero(infos["delta_yaw_ok"]).size(0) / infos["delta_yaw_ok"].numel())
+                gt_inject_buffer.append(1.0 - use_pred.float().mean().item())
                 embedding = self.alg.depth_actor(obs_student, hist_encoding=True, scandots_latent=depth_latent)
                 prob = self.depth_actor.actor_d(embedding)
                 mean = self.depth_actor.actor_c(embedding)
@@ -397,6 +426,7 @@ class OnPolicyRunner:
             start = stop
 
             delta_yaw_ok_percentage = sum(delta_yaw_ok_buffer) / len(delta_yaw_ok_buffer)
+            gt_inject_percentage = sum(gt_inject_buffer) / len(gt_inject_buffer)
             scandots_latent_buffer = torch.cat(scandots_latent_buffer, dim=0)
             depth_latent_buffer = torch.cat(depth_latent_buffer, dim=0)
 
@@ -437,8 +467,22 @@ class OnPolicyRunner:
             if self.log_dir is not None:
                 self.log_vision(locals())
             if it % self.save_interval == 0:
-                self.save(os.path.join(self.log_dir, 'model.pt'.format(it)))
+                self.save(os.path.join(self.log_dir, 'model.pt'), iteration=it + 1)
+            if (self.milestone_interval and it > self.start_learning_iteration
+                    and it % self.milestone_interval == 0):
+                ckpt_dir = os.path.join(self.log_dir, 'checkpoints')
+                os.makedirs(ckpt_dir, exist_ok=True)
+                self.save(os.path.join(ckpt_dir, 'model_{}.pt'.format(it)), iteration=it + 1)
             ep_infos.clear()
+
+        # 循环以 tot_iter-1 结束, 补一次收尾存盘, 避免最后不足 save_interval 的部分丢失
+        if self.log_dir is not None:
+            self.current_learning_iteration = tot_iter
+            self.save(os.path.join(self.log_dir, 'model.pt'), iteration=tot_iter)
+            if self.milestone_interval:
+                ckpt_dir = os.path.join(self.log_dir, 'checkpoints')
+                os.makedirs(ckpt_dir, exist_ok=True)
+                self.save(os.path.join(ckpt_dir, 'model_{}.pt'.format(tot_iter)), iteration=tot_iter)
 
     def log_vision(self, locs, width=80, pad=35):
         self.tot_timesteps += self.num_steps_per_env * self.env.num_envs
@@ -464,6 +508,7 @@ class OnPolicyRunner:
         fps = int(self.num_steps_per_env * self.env.num_envs / (locs['collection_time'] + locs['learn_time']))
 
         log_dict['Loss_depth/delta_yaw_ok_percent'] = locs['delta_yaw_ok_percentage']
+        log_dict['Train/gt_inject_percent'] = locs['gt_inject_percentage']
         log_dict['Loss_depth/depth_actor'] = locs['depth_actor_loss']
         log_dict['Loss_depth/yaw'] = locs['yaw_loss']
         log_dict['Loss_depth/obst_type'] = locs['obst_type_loss']
@@ -607,12 +652,12 @@ class OnPolicyRunner:
         remaining_seconds = seconds % 60
         return hours, minutes, remaining_seconds
 
-    def save(self, path, infos=None):
+    def save(self, path, infos=None, iteration=None):
         state_dict = {
             'model_state_dict': self.alg.actor_critic.state_dict(),
             'estimator_state_dict': self.alg.estimator.state_dict(),
             'optimizer_state_dict': self.alg.optimizer.state_dict(),
-            'iter': self.current_learning_iteration,
+            'iter': self.current_learning_iteration if iteration is None else iteration,
             'infos': infos,
         }
         if self.if_depth:
@@ -620,7 +665,7 @@ class OnPolicyRunner:
             state_dict['depth_actor_state_dict'] = self.alg.depth_actor.state_dict()
         torch.save(state_dict, path)
 
-    def load(self, path, load_optimizer=True):
+    def load(self, path, load_optimizer=True, load_iteration=False):
         print("*" * 80)
         print("Loading model from {}...".format(path))
         loaded_dict = torch.load(path, map_location=self.device)
@@ -640,7 +685,11 @@ class OnPolicyRunner:
                 self.alg.depth_actor.load_state_dict(self.alg.actor_critic.actor.state_dict())
         if load_optimizer:
             self.alg.optimizer.load_state_dict(loaded_dict['optimizer_state_dict'])
-        # self.current_learning_iteration = loaded_dict['iter']
+        if load_iteration:
+            # 只有同实验续训才恢复计数, 跨阶段 resume (teacher base -> student dist) 必须从 0 开始,
+            # 否则 depth encoder 的 lr 调度 (it / 20000) 会一上来就被钳到 learning_rate_min
+            self.current_learning_iteration = loaded_dict.get('iter', 0)
+            print("Resuming iteration counter from {}".format(self.current_learning_iteration))
         print("*" * 80)
         return loaded_dict['infos']
 

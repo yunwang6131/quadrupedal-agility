@@ -9,8 +9,11 @@ from legged_gym.utils import get_args, task_registry
 import torch
 import torch.nn.functional as F
 import statistics
+import time
 import numpy as np
 from collections import deque
+from legged_gym.utils.math import trans_matrix
+from legged_gym.utils.torch_jit_utils import quaternion2rpy
 
 
 def play(args):
@@ -38,6 +41,8 @@ def play(args):
         env_cfg.env.num_envs = 256
         env_cfg.env.draw_height_maps = False
 
+    env_cfg.record_video = args.record
+
     # prepare environment
     env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)
     obs = env.get_observations()
@@ -55,6 +60,24 @@ def play(args):
     if env.cfg.depth.use_camera:
         ppo_runner.depth_backbone.augment = None
         depth_encoder = ppo_runner.get_depth_encoder_inference_policy(device=env.device)
+
+    # ---------------- video recording ----------------
+    video_writer, rec_cam = None, None
+    if args.record:
+        import cv2
+        cam_props = gymapi.CameraProperties()
+        cam_props.width, cam_props.height = args.record_width, args.record_height
+        cam_props.enable_tensors = False
+        rec_cam = env.gym.create_camera_sensor(env.envs[0], cam_props)
+        out_dir = os.path.join(ROOT_DIR, "logs", args.proj_name, args.exptid, "videos")
+        os.makedirs(out_dir, exist_ok=True)
+        video_path = os.path.join(out_dir, "play_{}.mp4".format(time.strftime("%Y%m%d_%H%M%S")))
+        fps = int(round(1.0 / env.dt))
+        video_writer = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*"mp4v"), fps,
+                                       (args.record_width, args.record_height))
+        print("[record] {} @ {} fps, {} steps".format(video_path, fps, args.record_steps))
+        import atexit
+        atexit.register(video_writer.release)
 
     actions = torch.zeros(env.num_envs, 12, device=env.device, requires_grad=False)
     infos = {}
@@ -115,6 +138,23 @@ def play(args):
 
             obs, _, rews, dones, infos, _, _ = env.step(actions_bbc)
             obs_bbc = env.get_observations_bbc()
+
+            if video_writer is not None:
+                rp = env.root_states[env.lookat_id, :3].cpu().numpy()
+                rq = env.root_states[env.lookat_id, 3:7].cpu().numpy()
+                cam_bias = np.array([-1.8, -0.8, 0.8])
+                cp = (trans_matrix(rp, [0, 0, quaternion2rpy(rq)[-1]]) @ np.append(cam_bias, 1))[:-1]
+                env.gym.set_camera_location(rec_cam, env.envs[0],
+                                            gymapi.Vec3(*cp), gymapi.Vec3(*rp))
+                env.gym.step_graphics(env.sim)
+                env.gym.render_all_camera_sensors(env.sim)
+                frame = env.gym.get_camera_image(env.sim, env.envs[0], rec_cam, gymapi.IMAGE_COLOR)
+                frame = frame.reshape(args.record_height, args.record_width, 4)[:, :, :3]
+                video_writer.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+                if i + 1 >= args.record_steps:
+                    video_writer.release()
+                    print("[record] saved {} frames -> {}".format(i + 1, video_path))
+                    break
 
             cur_obstacle_type = env.cur_obstacle_types[env.lookat_id].item()
             cur_obstacle_type = env.obstacle.obst_types[int(cur_obstacle_type)]

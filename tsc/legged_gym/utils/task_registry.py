@@ -125,7 +125,10 @@ class TaskRegistry():
             # print(train_cfg.runner.load_run)
             resume_path = get_load_path(log_root, load_run=train_cfg.runner.load_run,
                                         checkpoint=train_cfg.runner.checkpoint)
-            runner.load(resume_path)
+            # 同实验续训 (--exptid X --resumeid X) 写回同一个 log 目录, 接着数迭代;
+            # 跨阶段 resume (--exptid dist --resumeid base) 写到新目录, 仍从 0 开始
+            same_experiment = bool(args.resumeid) and args.resumeid == args.exptid
+            runner.load(resume_path, load_iteration=same_experiment)
             if not train_cfg.policy.continue_from_last_std:
                 runner.alg.actor_critic.reset_std(train_cfg.policy.init_noise_std,
                                                   runner.env.num_actions_d * runner.env.num_actions_c,

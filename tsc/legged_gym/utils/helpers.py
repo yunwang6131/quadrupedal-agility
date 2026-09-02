@@ -209,6 +209,11 @@ def get_args():
         {"name": "--cols", "type": int, "help": "num_cols"},
 
         {"name": "--use_camera", "action": "store_true", "default": False, "help": "render camera for distillation"},
+        {"name": "--record", "action": "store_true", "default": False,
+         "help": "record an mp4 while playing (works together with --headless)"},
+        {"name": "--record_steps", "type": int, "default": 3000, "help": "number of steps to record"},
+        {"name": "--record_width", "type": int, "default": 1280, "help": "video width"},
+        {"name": "--record_height", "type": int, "default": 720, "help": "video height"},
         {"name": "--tracking_goal_vel", "type": float},
         {"name": "--tracking_yaw", "type": float},
         {"name": "--action_hl_rate", "type": float},

@@ -4,6 +4,7 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__fi
 sys.path.append(ROOT_DIR)
 import time
 import isaacgym
+from isaacgym import gymapi
 import numpy as np
 import torch
 from legged_gym.envs import *
@@ -33,6 +34,8 @@ def play(args):
     env_cfg.env.recovery_init_prob = 0.
     env_cfg.env.root_height_obs = True
 
+    env_cfg.record_video = args.record
+
     train_cfg.runner.num_preload_transitions = 1
     train_cfg.policy.train_with_estimated_latent = True
     train_cfg.estimator.train_with_estimated_explicit = True
@@ -58,13 +61,42 @@ def play(args):
     stop_state_log = -1  # number of steps before plotting states
     stop_rew_log = env.max_episode_length + 1  # number of steps before print average episode rewards
     camera_pos_bias = np.array([-2.8, -1.8, 1.8])
+    record_cam_bias = np.array([-2.0, -1.2, 0.7])
     img_idx = 0
 
-    # set initial commands
+    # set initial commands (behavior mode: 1.walk 2.pace 3.trot 4.canter 5.jump)
+    mode_idx = min(max(args.mode, 1), env.latent_c.shape[-1]) - 1
     env.latent_c[:, :] = 0
     env.commands[:, :] = 0
-    env.latent_c[:, 2] = 1
-    env.commands[:, 0] = 2
+    env.latent_eps[:, :] = 0
+    env.latent_c[:, mode_idx] = 1
+    env.commands[:, 0] = args.vel_x
+    if mode_idx == env.latent_c.shape[-1] - 1:  # jump
+        env.commands[:, 3] = args.jump_height
+    else:
+        env.commands[:, 4] = 0.30
+    print('[play] mode = {} ({}), vel_x = {}, jump_height = {}'.format(
+        args.mode, env_cfg.env.mocap_category_all[mode_idx], args.vel_x, env.commands[0, 3].item()))
+
+    # ---------------- video recording ----------------
+    video_writer, rec_cam = None, None
+    if args.record:
+        import cv2
+        cam_props = gymapi.CameraProperties()
+        cam_props.width, cam_props.height = args.record_width, args.record_height
+        cam_props.horizontal_fov = 55.0
+        cam_props.enable_tensors = False
+        rec_cam = env.gym.create_camera_sensor(env.envs[0], cam_props)
+        out_dir = os.path.join(ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'videos')
+        os.makedirs(out_dir, exist_ok=True)
+        video_path = os.path.join(out_dir, 'play_mode{}_{}.mp4'.format(args.mode, time.strftime('%Y%m%d_%H%M%S')))
+        fps = int(round(1.0 / env.dt))
+        video_writer = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*'mp4v'), fps,
+                                       (args.record_width, args.record_height))
+        print('[record] {} @ {} fps, {} steps'.format(video_path, fps, args.record_steps))
+        base_h = []
+        import atexit
+        atexit.register(video_writer.release)
 
     for i in range(1000 * int(env.max_episode_length)):
         time0 = time.time()
@@ -78,6 +110,24 @@ def play(args):
                                         'frames', f"{img_idx}.png")
                 env.gym.write_viewer_image_to_file(env.viewer, filename)
                 img_idx += 1
+        if video_writer is not None:
+            rp = env.root_states[0, :3].cpu().numpy()
+            rq = env.root_states[0, 3:7].cpu().numpy()
+            cp = (trans_matrix_ba(rp, [0, 0, quaternion2rpy(rq)[-1]]) @ np.append(record_cam_bias, 1))[:-1]
+            base_h.append(float(rp[2] - env.measured_heights[0].mean().item()))
+            env.gym.set_camera_location(rec_cam, env.envs[0], gymapi.Vec3(*cp), gymapi.Vec3(*rp))
+            env.gym.step_graphics(env.sim)
+            env.gym.render_all_camera_sensors(env.sim)
+            frame = env.gym.get_camera_image(env.sim, env.envs[0], rec_cam, gymapi.IMAGE_COLOR)
+            frame = frame.reshape(args.record_height, args.record_width, 4)[:, :, :3]
+            video_writer.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+            if i + 1 >= args.record_steps:
+                video_writer.release()
+                print('[record] saved {} frames -> {}'.format(i + 1, video_path))
+                print('[record] base height over terrain: min {:.3f} / mean {:.3f} / max {:.3f} m'.format(
+                    np.min(base_h), np.mean(base_h), np.max(base_h)))
+                break
+
         if MOVE_CAMERA:
             robot_pos = env.root_states[0, :3].cuda().cpu().numpy()
             camera_position = (trans_matrix_ba(robot_pos, [0, 0, 0]) @ np.append(camera_pos_bias, 1))[:-1]
@@ -110,11 +160,12 @@ def play(args):
                 if num_episodes > 0:
                     logger.log_rewards(infos["episode"], num_episodes)
 
-        time1 = time.time()
-        dt_target = 4 * 1 / 200
-        dt_it = time1 - time0
-        if dt_it < dt_target:
-            time.sleep(dt_target - dt_it)
+        if not args.record:
+            time1 = time.time()
+            dt_target = 4 * 1 / 200
+            dt_it = time1 - time0
+            if dt_it < dt_target:
+                time.sleep(dt_target - dt_it)
 
 
 if __name__ == '__main__':
