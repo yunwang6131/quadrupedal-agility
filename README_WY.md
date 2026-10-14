@@ -78,3 +78,16 @@ python play.py --proj_name agility --exptid dist --device_id 2 --headless \
 cd ~/quadrupedal-agility/bbc/legged_gym/scripts
 python play.py --task go2_locomotion --load_run 0 --headless True --device_id 0 \
   --mode 5 --record --record_steps 750 --record_width 1280 --record_height 720
+
+# 本机（RTX 5080 笔记本）环境 — 2026-10-14 由 Claude 配置
+conda activate agility
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
+
+## 现状
+- 代码/权重已从服务器同步到本机，GitHub: yunwang6131/quadrupedal-agility
+- git remote: origin=GitHub, upstream=NJU-RLC, server=111.0.18.168
+- tsc/logs (base/dist/dist_anneal 等全部 checkpoint) 已同步
+- RTX 5080 (sm_120/Blackwell) 不被 torch 2.3.1+cu118 支持，CUDA 张量运算报
+  "no kernel image"。Isaac Gym CPU 管线可用（PhysX GPU 也能启动，但 torch 过不去）
+- 结论：本机做开发/调试/分析；训练仍在服务器 (8x4090) 跑
+- 同步权重：rsync -a wangyun@111.0.18.168:quadrupedal-agility/tsc/logs/ tsc/logs/
