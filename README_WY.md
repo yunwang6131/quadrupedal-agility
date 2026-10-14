@@ -60,6 +60,16 @@ tmux attach -t agility
 cd ~/quadrupedal-agility/tsc/legged_gym/scripts
 python train.py --proj_name agility --exptid dist --device_id 2 \
   --resume --resumeid base --use_camera --max_iterations 15000
+
+# student
+cd ~/quadrupedal-agility
+source .venv/bin/activate
+export LD_LIBRARY_PATH=$PWD/.venv/lib:$LD_LIBRARY_PATH
+cd tsc/legged_gym/scripts
+
+python train.py --proj_name agility --exptid dist_anneal --device_id 1 --headless \
+  --resume --resumeid dist --use_camera --max_iterations 8000
+
 # 录制TSC tudent
 python play.py --proj_name agility --exptid dist --device_id 2 --headless \
   --use_camera --record --record_steps 1500

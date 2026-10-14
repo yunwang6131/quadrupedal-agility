@@ -1,0 +1,97 @@
+Importing module 'gym_38' (/home/wangyun/isaacgym/python/isaacgym/_bindings/linux-x86_64/gym_38.so)
+Setting GYM_USD_PLUG_INFO_PATH to /home/wangyun/isaacgym/python/isaacgym/_bindings/linux-x86_64/usd/plugInfo.json
+PyTorch version 2.3.1+cu118
+Device count 8
+/home/wangyun/isaacgym/python/isaacgym/_bindings/src/gymtorch
+Using /home/wangyun/.cache/torch_extensions/py38_cu118 as PyTorch extensions root...
+Emitting ninja build file /home/wangyun/.cache/torch_extensions/py38_cu118/gymtorch/build.ninja...
+Building extension module gymtorch...
+Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
+ninja: no work to do.
+Not connected to PVD
++++ Using GPU PhysX
+Physics Engine: PhysX
+Physics Device: cuda:1
+GPU Pipeline: enabled
+Loading extension module gymtorch...
+Random seed: 1
+********************************************************************************
+Start creating ground...
+Finished creating ground. Time taken 1.69 s
+********************************************************************************
+Creating env...
+  0%|          | 0/256 [00:00<?, ?it/s]  2%|▏         | 4/256 [00:00<00:06, 37.13it/s]  4%|▍         | 11/256 [00:00<00:04, 55.55it/s]  7%|▋         | 18/256 [00:00<00:05, 43.84it/s] 12%|█▏        | 31/256 [00:00<00:03, 69.56it/s] 18%|█▊        | 45/256 [00:00<00:02, 90.40it/s] 23%|██▎       | 59/256 [00:00<00:01, 103.56it/s] 29%|██▊       | 73/256 [00:00<00:01, 114.29it/s] 34%|███▍      | 87/256 [00:00<00:01, 121.10it/s] 39%|███▉      | 101/256 [00:01<00:01, 125.40it/s] 45%|████▍     | 115/256 [00:01<00:01, 126.99it/s] 50%|█████     | 129/256 [00:01<00:00, 129.24it/s] 56%|█████▌    | 143/256 [00:01<00:00, 130.78it/s] 61%|██████▏   | 157/256 [00:01<00:00, 130.56it/s] 67%|██████▋   | 171/256 [00:01<00:00, 130.68it/s] 72%|███████▏  | 185/256 [00:01<00:00, 129.22it/s] 77%|███████▋  | 198/256 [00:01<00:00, 128.78it/s] 82%|████████▏ | 211/256 [00:01<00:00, 127.74it/s] 88%|████████▊ | 224/256 [00:01<00:00, 126.62it/s] 93%|█████████▎| 237/256 [00:02<00:00, 125.77it/s] 98%|█████████▊| 250/256 [00:02<00:00, 122.68it/s]100%|██████████| 256/256 [00:02<00:00, 114.32it/s]
+Creating obstacles...
+  0%|          | 0/256 [00:00<?, ?it/s]  8%|▊         | 21/256 [00:00<00:01, 207.57it/s] 23%|██▎       | 60/256 [00:00<00:00, 310.23it/s] 38%|███▊      | 98/256 [00:00<00:00, 341.64it/s] 54%|█████▎    | 137/256 [00:00<00:00, 357.28it/s] 68%|██████▊   | 175/256 [00:00<00:00, 363.70it/s] 84%|████████▎ | 214/256 [00:00<00:00, 369.89it/s] 98%|█████████▊| 251/256 [00:00<00:00, 320.71it/s]100%|██████████| 256/256 [00:00<00:00, 323.97it/s]
+  0%|          | 0/256 [00:00<?, ?it/s] 62%|██████▏   | 158/256 [00:00<00:00, 1579.86it/s]100%|██████████| 256/256 [00:00<00:00, 1577.91it/s]'train_cfg' provided -> Ignoring 'name=go2'
+ActorCritic.__init__ got unexpected arguments, which will be ignored: ['continue_from_last_std', 'priv_encoder_dims', 'rnn_hidden_size', 'rnn_num_layers', 'rnn_type', 'tanh_encoder_output']
+ActorCritic.__init__ got unexpected arguments, which will be ignored: ['continue_from_last_std', 'rnn_hidden_size', 'rnn_num_layers', 'rnn_type', 'scan_encoder_dims', 'tanh_encoder_output']
+********************************************************************************
+Loading model from /home/wangyun/quadrupedal-agility/tsc/logs/agility/dist_anneal/model.pt...
+Saved depth encoder detected, loading...
+Saved depth actor detected, loading...
+********************************************************************************
+********************************************************************************
+Loading bbc model from /home/wangyun/quadrupedal-agility/tsc/weights/bbc/model.pt...
+********************************************************************************
+[1000步] 终止 37 次  成功率 0.0000
+  互斥归类: 偏航 12 (32.4%)  撞击 25 (67.6%)
+  原始标志: leave_goal 12  contact 25
+[2000步] 终止 300 次  成功率 0.6800
+  互斥归类: 成功 204 (68.0%)  偏航 42 (14.0%)  撞击 54 (18.0%)
+  原始标志: reach_goal 204  leave_goal 42  contact 54
+[3000步] 终止 555 次  成功率 0.7135
+  互斥归类: 成功 396 (71.4%)  偏航 78 (14.1%)  撞击 81 (14.6%)
+  原始标志: reach_goal 396  leave_goal 78  contact 81
+[4000步] 终止 744 次  成功率 0.7110
+  互斥归类: 成功 531 (71.4%)  偏航 104 (14.0%)  撞击 109 (14.7%)
+  原始标志: reach_goal 529  reach_last 2  leave_goal 104  contact 109
+[5000步] 终止 926 次  成功率 0.7106
+  互斥归类: 成功 660 (71.3%)  偏航 127 (13.7%)  撞击 139 (15.0%)
+  原始标志: reach_goal 658  reach_last 2  leave_goal 127  contact 139
+[6000步] 终止 1153 次  成功率 0.7490
+  互斥归类: 成功 834 (72.3%)  偏航 152 (13.2%)  撞击 167 (14.5%)
+  原始标志: reach_goal 832  reach_last 2  leave_goal 152  contact 167
+[7000步] 终止 1383 次  成功率 0.7610
+  互斥归类: 成功 1013 (73.2%)  偏航 175 (12.7%)  撞击 195 (14.1%)
+  原始标志: reach_goal 1011  reach_last 2  leave_goal 175  contact 195
+[8000步] 终止 1586 次  成功率 0.7540
+  互斥归类: 成功 1165 (73.5%)  偏航 204 (12.9%)  撞击 217 (13.7%)
+  原始标志: reach_goal 1163  reach_last 2  leave_goal 204  contact 217
+
+/home/wangyun/quadrupedal-agility/.venv/lib/python3.8/site-packages/torch/functional.py:512: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at ../aten/src/ATen/native/TensorShape.cpp:3587.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+
+==============================================================
+诊断完成  8000 步  终止 1586 次  成功率 0.7540
+==============================================================
+  成功       1165   73.46%
+  偏航        204   12.86%
+  撞击        217   13.68%
+--------------------------------------------------------------
+原始标志(可重叠):
+  reach_goal     1163
+  reach_last        2
+  leave_goal      204
+  roll              0
+  pitch             0
+  height            0
+  contact         217
+  timeout           0
+Using VHACD cache directory '/home/wangyun/.isaacgym/vhacd'
+Found existing convex decomposition for mesh '/home/wangyun/quadrupedal-agility/tsc/resources/obstacles/bar_jump/./meshes/base_link.STL'
+Found existing convex decomposition for mesh '/home/wangyun/quadrupedal-agility/tsc/resources/obstacles/bar_jump/./meshes/link0.STL'
+Found existing convex decomposition for mesh '/home/wangyun/quadrupedal-agility/tsc/resources/obstacles/frame/./meshes/base_link.STL'
+Found existing convex decomposition for mesh '/home/wangyun/quadrupedal-agility/tsc/resources/obstacles/poles/./meshes/base_link.STL'
+Found existing convex decomposition for mesh '/home/wangyun/quadrupedal-agility/tsc/resources/obstacles/seesaw/./meshes/base_link.STL'
+Found existing convex decomposition for mesh '/home/wangyun/quadrupedal-agility/tsc/resources/obstacles/seesaw/./meshes/link0.STL'
+Found existing convex decomposition for mesh '/home/wangyun/quadrupedal-agility/tsc/resources/obstacles/tire_jump/./meshes/base_link.STL'
+Found existing convex decomposition for mesh '/home/wangyun/quadrupedal-agility/tsc/resources/obstacles/tire_jump/./meshes/link0.STL'
+Found existing convex decomposition for mesh '/home/wangyun/quadrupedal-agility/tsc/resources/obstacles/tunnel/./meshes/base_link.STL'
+Found existing convex decomposition for mesh '/home/wangyun/quadrupedal-agility/tsc/resources/obstacles/border/./meshes/base_link.STL'
+[Warning] [carb.gym.plugin] Incorrect actor creation order.
+All actors must be added to an env before creating the next env.
+Adding actors to envs out of order can result in errors.
+
+To suppress this warning, set enable_actor_creation_warning to False in SimParams.
+
